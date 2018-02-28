@@ -19,10 +19,10 @@ parser.add_argument("-m", "--message", help='message to send to the server', req
 args = parser.parse_args()
 
 # load server's public key
-serverPublicKeyFileName = "serverPublicKey"
+serverPublicKeyFileName = "yubaPubKey"
 f = open(serverPublicKeyFileName,'r')
 RSAPubKey = RSA.importKey(f.read())
-MESSAGE_LENGTH = 16
+MESSAGE_LENGTH = 15
 
 def getConnection():
 	# Create a TCP/IP socket
@@ -54,13 +54,13 @@ def shiftRSACipher(cipher, key, bits):
 	new_cipher = (bytes_to_long(cipher) * ((2**(bits * key.e)) % key.n)) % key.n
 	return long_to_bytes(new_cipher, 128)
 
-def sendPayload(payload, message):
+def sendPayload(payload, messageLength):
 	sock = getConnection()
 	sock.sendall(payload)
 
 	# Look for the response
 	amount_received = 0
-	amount_expected = len(message)
+	amount_expected = messageLength
 
 	"""
 	  - AES block size is 128bits(16 bytes | 16 char of the message)
@@ -68,9 +68,9 @@ def sendPayload(payload, message):
 	  - Therefore, that's the length of data returned from server is expected to be above length
 	"""
 	if amount_expected % 16 != 0:
-		amount_expected += (16 - (len(message) % 16))
+		amount_expected += (16 - (messageLength % 16))
 
-	print "Message Length:", len(message)
+	print "Message Length:", messageLength 
 	print "Expected Length:", amount_expected
 	answer = ""
 
@@ -78,8 +78,6 @@ def sendPayload(payload, message):
 		while amount_received < amount_expected:
 			data = sock.recv(MESSAGE_LENGTH)
 			print "Data received length:", len(data)
-			if not len(data):
-				break
 
 			amount_received += len(data)
 			answer += data
@@ -91,8 +89,7 @@ def sendPayload(payload, message):
 	return answer
 
 AESKey = 2**127
-#AESKey = 84901831929511912159112754158961946559
-AESKey = 337576855738468283045143167699307397102
+AESKey = 145539436623726128093418598823574531036
 
 file_ob = open('cipher.txt', "r")
 content = file_ob.read()
@@ -120,16 +117,16 @@ for i in reversed(range(0, 128)):
 	payload += aes.encrypt(message)
 	print "Payload Length: ", len(payload)
 
-	response = "";
-	response = sendPayload(payload, message)
+	response = sendPayload(payload, len(message))
+
 	print "Response: ", aes.decrypt(response)
 	print "Expected Response: ", message.upper()
 
-	if aes.decrypt(response).strip() != message.strip():
+	if aes.decrypt(response).strip() != message.upper().strip():
 		AESKey = toggleFirstBit(AESKey)
 		
 	break
-	#time.sleep(5)
+	time.sleep(5)
 
 aes = AESCipher(long_to_bytes(AESKey, 16))
 print "Decrypted Message: ", aes.decrypt(encryptedMessage)
