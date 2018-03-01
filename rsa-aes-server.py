@@ -56,6 +56,8 @@ sock.listen(10)
 
 rsa = RSACipher()
 
+file_ob = open('server.txt', "a")
+file_ob.write("started\n")
 while True:
     print >>sys.stderr, 'Waiting for a connection...' # Wait for a conneciton
     connection, client_address = sock.accept()
@@ -66,15 +68,20 @@ while True:
         cipher = connection.recv(1024)
         print("Message Received...")
 
+	file_ob.write("message received\n")
         message = myDecrypt(rsa, cipher)
+	file_ob.write(message + "\n")
         if message:
+	    file_ob.write("Successfully decrypted message" + message + "\n")
             print "decrypted successfully!"
             print message
             aes = AESCipher(getSessionKey(rsa, cipher))
             msg = aes.encrypt(message.upper())
             connection.sendall(msg)
         else:
+	    file_ob.write("coudln't decrypt" + "\n")
             connection.sendall("Couldn't decrypt!")
+	file_ob.flush()
     finally:
         # Clean up the connection
         connection.close()
